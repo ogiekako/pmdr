@@ -1,28 +1,36 @@
 package main
 
-// Add events using Google Calendar API.
+// Add event using Google Calendar API.
 // https://github.com/google/google-api-go-client/blob/master/calendar/v3/calendar-gen.go
+
 import (
 	"flag"
 	"fmt"
-	"github.com/ogiekako/pmdr/calendarc"
-	"golang.org/x/net/context"
-	"google.golang.org/api/calendar/v3"
 	"log"
 	"os"
+	"pmdr/calendarc"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/net/context"
+	"google.golang.org/api/calendar/v3"
 )
 
 var after = flag.Duration("after", 0, "Start first pomodoro after this duration.")
 var from = flag.String("from", "", "Start time in the form of 15:04.")
+var remove = flag.Bool("remove", false, "Remove the entries after the specified time")
+
+var pmdrDuration = 25 * time.Minute
+var shortBreak = 5 * time.Minute
+var longBreak = 15 * time.Minute
+var chunk = 4
 
 func format(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
-func createEvent(srv *calendar.Service, fromId, count int) {
+func startTime() time.Time {
 	t := time.Now().Add(*after)
 	if *from != "" {
 		year, month, day := t.Date()
@@ -33,10 +41,28 @@ func createEvent(srv *calendar.Service, fromId, count int) {
 		hour, min, _ := t2.Clock()
 		t = time.Date(year, month, day, hour, min, 0, 0, t.Location())
 	}
-	pmdrDuration := 25 * time.Minute
-	shortBreak := 5 * time.Minute
-	longBreak := 15 * time.Minute
-	chunk := 4
+	return t
+}
+
+func removeEvents(srv *calendar.Service) {
+	t := startTime()
+	events, err := srv.Events.List("primary").ShowDeleted(false).SingleEvents(true).TimeMin(format(t)).TimeMax(format(t.Add(24 * time.Hour))).OrderBy("startTime").Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve events. %v", err)
+	}
+	for _, item := range events.Items {
+		if strings.Contains(item.Summary, "pmdr") {
+			fmt.Printf("Removing %s\n", item.Summary)
+			if err := srv.Events.Delete("primary", item.Id).Do(); err != nil {
+				log.Fatalf("Failed to delete event. %v", err)
+			}
+		}
+	}
+}
+
+func createEvent(srv *calendar.Service, fromId, count int) {
+	t := startTime()
+
 	for i := fromId; i < fromId+count; i++ {
 		summary := fmt.Sprintf("pmdr %d", i)
 		var remindBefore time.Duration
@@ -79,6 +105,7 @@ func createEvent(srv *calendar.Service, fromId, count int) {
 			log.Fatalf("Unable to create event. %v\n", err)
 		}
 		fmt.Printf("%v-%v %v %s\n", t.Format("15:04"), t.Add(pmdrDuration).Format("15:04"), summary, event.HtmlLink)
+
 		add := pmdrDuration
 		if (i-fromId)%chunk == chunk-1 {
 			add += longBreak
@@ -117,6 +144,7 @@ func nextPmdrId(srv *calendar.Service) int {
 func main() {
 	flag.Parse()
 	count := 4
+
 	if flag.NArg() == 0 {
 		// Do nothing.
 	} else if flag.NArg() == 1 {
@@ -125,8 +153,14 @@ func main() {
 		fmt.Fprintf(os.Stderr, "add [-after duration] [-from start_time] [count]")
 		return
 	}
+
 	ctx := context.Background()
 	srv := calendarc.NewService(ctx)
-	from := nextPmdrId(srv)
-	createEvent(srv, from, count)
+
+	if *remove {
+		removeEvents(srv)
+	} else {
+		from := nextPmdrId(srv)
+		createEvent(srv, from, count)
+	}
 }

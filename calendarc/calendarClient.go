@@ -2,13 +2,10 @@ package calendarc
 
 // Add event using Google Calendar API.
 // https://github.com/google/google-api-go-client/blob/master/calendar/v3/calendar-gen.go
+
 import (
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/calendar/v3"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,6 +13,11 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/calendar/v3"
 )
 
 type Client struct {
@@ -27,6 +29,7 @@ func NewService(ctx context.Context) *calendar.Service {
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
+
 	// If modifying these scopes, delete your previously saved credentials
 	// at ~/.credentials/calendar-go-quickstart.json
 	config, err := google.ConfigFromJSON(b, calendar.CalendarScope)
@@ -34,6 +37,7 @@ func NewService(ctx context.Context) *calendar.Service {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
 	client := getClient(ctx, config)
+
 	srv, err := calendar.New(client)
 	if err != nil {
 		log.Fatalf("Unable to retrieve calendar Client %v", err)
@@ -62,10 +66,12 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Printf("Go to the following link in your browser then type the "+
 		"authorization code: \n%v\n", authURL)
+
 	var code string
 	if _, err := fmt.Scan(&code); err != nil {
 		log.Fatalf("Unable to read authorization code %v", err)
 	}
+
 	tok, err := config.Exchange(oauth2.NoContext, code)
 	if err != nil {
 		log.Fatalf("Unable to retrieve token from web %v", err)
