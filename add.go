@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"pmdr/calendarc"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ogiekako/pmdr/calendarc"
 	"golang.org/x/net/context"
 	"google.golang.org/api/calendar/v3"
 )
