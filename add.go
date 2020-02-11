@@ -126,7 +126,7 @@ func nextPmdrId(srv *calendar.Service) int {
 	}
 	events, err := srv.Events.List("primary").ShowDeleted(false).SingleEvents(true).TimeMin(format(origin)).OrderBy("startTime").Do()
 	if err != nil {
-		log.Fatalf("Unable to retrieve today's user events. %v", err)
+		log.Fatalf("Unable to retrieve today's user events. You may want to remove ~/.credentials/calendar-go-quickstart.json: %v", err)
 	}
 	res := 1
 	for _, item := range events.Items {
